@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 // Restartable rate generator.
-// When running, it makes a one-cycle tick every CYCLE_COUNT clocks.
+// When run is high, it makes a one-cycle tick every CYCLE_COUNT clocks.
 module restartable_rate_generator #(
     parameter int CYCLE_COUNT = 2
 ) (
@@ -10,12 +10,12 @@ module restartable_rate_generator #(
     output logic tick
 );
 
-  logic tick_qualifier;
   logic running;
+  logic tick_qualifier;
 
-  // running stores the previous run value as part of the FSM state
   initial running = 1'b0;
 
+  // Store run as state, so tick does not depend on run combinationally.
   always_ff @(posedge clk) begin
     running <= run;
   end
@@ -23,9 +23,16 @@ module restartable_rate_generator #(
   assign tick = running && tick_qualifier;
 
   generate
-    if (CYCLE_COUNT > 1) begin : g_general
+    if (CYCLE_COUNT == 1) begin : g_special
+
+      // No counter is needed. Once run has been sampled high,
+      // tick is high on clocked state only.
+      assign tick_qualifier = 1'b1;
+
+    end else begin : g_general
 
       localparam int CountWidth = $clog2(CYCLE_COUNT);
+      localparam logic [CountWidth-1:0] TickCount = CountWidth'(CYCLE_COUNT - 1);
 
       logic rst_count;
       logic enable_count;
@@ -41,19 +48,13 @@ module restartable_rate_generator #(
           .count(count)
       );
 
-      // run low restarts the counter
+      // Counter runs only when run is high.
+      // If run is low, restart from zero.
       assign rst_count = !run;
-
-      // counter only counts while run is high
       assign enable_count = run;
 
-      // tick becomes possible at the last count value
-      assign tick_qualifier = count == CountWidth'(CYCLE_COUNT - 1);
-
-    end else begin : g_special
-
-      // CYCLE_COUNT = 1 means every running cycle is a tick
-      assign tick_qualifier = 1'b1;
+      // This depends only on the counter state.
+      assign tick_qualifier = count == TickCount;
 
     end
   endgenerate
