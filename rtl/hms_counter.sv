@@ -19,7 +19,6 @@ module hms_counter #(
     output logic [W_SECONDS-1:0] seconds
 );
 
-  localparam logic [W_HOURS-1:0] MaxHours = W_HOURS'(N_HOURS - 1);
   localparam logic [W_MINUTES-1:0] MaxMinutes = W_MINUTES'(N_MINUTES - 1);
   localparam logic [W_SECONDS-1:0] MaxSeconds = W_SECONDS'(N_SECONDS - 1);
 
